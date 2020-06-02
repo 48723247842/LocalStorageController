@@ -122,6 +122,9 @@ class USBStorage:
 			tv_shows_map[ show_name_b64 ][ season_name_b64 ].append( episode_name_b64 )
 
 		# Also Don't Ask
+		# since you did, its just some bulll shit to double verify that they order is correct.
+		# glob sorts it fine, but why not sort it again 4Head Pepega
+		# also, why not encode and decode the same thing like 50 times
 		tv_shows_map_organized = {}
 		show_names_b64 = tv_shows_map.keys()
 		show_names = [ base64_decode( x ) for x in show_names_b64 ]
@@ -138,21 +141,19 @@ class USBStorage:
 
 		# Finally Store into Redis
 
-		# 1.) Store All Shows into Circular List
+		# 1.) Store All Show Names into Circular List
 		show_keys = tv_shows_map_organized.keys()
 		show_names_b64 = [ base64_encode( x ) for x in show_keys ]
 		for x in show_names_b64:
 			self.redis.rpush( "STATE.USB_STORAGE.LIBRARY.TV_SHOWS" , x )
 
+		# 2.) Store All Episodes into Giant List
 		for show_index , show in enumerate( show_keys ):
+			list_key = f"STATE.USB_STORAGE.LIBRARY.TV_SHOWS.{show_names_b64[show_index]}"
 			for season_index , season in enumerate( tv_shows_map_organized[ show ] ):
-				# 2.) Store All Seasons into Circular List
-				season_key_part = str( str( season_index ).zfill( 2 ) )
-				self.redis.rpush( f"STATE.USB_STORAGE.LIBRARY.TV_SHOWS.{show_names_b64[show_index]}.SEASONS" , season_key_part )
 				for episode_index , episode in enumerate( tv_shows_map_organized[ show ][ season_index ] ):
-					list_key = f"STATE.USB_STORAGE.LIBRARY.TV_SHOWS.{show_names_b64[show_index]}.SEASONS.{season_key_part}"
-					# 2.) Store Episode into Circular List
-					self.redis.rpush( list_key , base64_encode( episode ) )
+					final_path = str( self.paths["tv_shows"].joinpath( show , str( season_index + 1 ).zfill( 2 ) , episode ) )
+					self.redis.rpush( list_key , base64_encode( final_path ) )
 
 
 
@@ -160,5 +161,3 @@ if __name__ == '__main__':
 	usb_storage = USBStorage({
 			"uuid": "187A29A07A297B9E"
 		})
-	# tv_shows = find_tv_shows( f"{usb_drive_path}/MEDIA_MANAGER/TVShows/" )
-	# pprint( tv_shows )
