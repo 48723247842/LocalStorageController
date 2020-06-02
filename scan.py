@@ -70,33 +70,27 @@ def find_tv_shows( base_path_string ):
 	return tv_shows_map_organized
 
 def mount_usb_drive( uuid ):
-	mount_directory_path = f"/media/{uuid}"
-	current_mount_directory_path = subprocess.getoutput( f"findmnt -S UUID={uuid} -o TARGET | tail -1" )
-	current_mount_directory_path = current_mount_directory_path.strip()
-	current_mount_directory_path = shellescape.quote( current_mount_directory_path )
-	if current_mount_directory_path != mount_directory_path:
-		print( current_mount_directory_path )
-		print( f"Ubuntu Auto Mounted Drive ... Unmounting {current_mount_directory_path}" )
-		subprocess.getoutput( f"sudo umount {current_mount_directory_path}" )
-		try:
-			# find uuids via sudo /usr/sbin/blkid
-			# findmnt -S UUID="187A29A07A297B9E" | awk '{print $2}'
-			#mount_point = subprocess.getoutput( f"findmnt -rn -S UUID={uuid} -o TARGET" )
-			#print( mount_point )
-			device_path = subprocess.getoutput( f"blkid | grep UUID=" )
-			device_path = device_path.split( "\n" )
-			for index , line in enumerate( device_path ):
-				if line.find( uuid ) > -1:
-					device_path = line.split( ":" )[0]
-		except Exception as e:
-			print( e )
-			return False
-		mount_directory_path = f"/media/{uuid}/"
-		subprocess.getoutput( f"sudo mkdir {mount_directory_path}" )
-		print( f"Mounting at {mount_directory_path}" )
-		subprocess.getoutput( f"sudo mount {device_path} {mount_directory_path}" )
-		time.sleep( 3 )
-	return mount_directory_path
+
+	desired_mount_point = f"/media/{uuid}"
+
+	device_path = subprocess.getoutput( f"lsblk -o UUID,PATH | grep {uuid}" + " | awk '{print $2}'" )
+	current_mount_point = subprocess.getoutput( f"lsblk -o UUID,MOUNTPOINT | grep {uuid}" + " | awk '{print $2}'" )
+
+	if current_mount_point == desired_mount_point:
+		print( f"Already Mounted at Desired Mount Point: {desired_mount_point}" )
+		return desired_mount_point
+
+	if len( current_mount_point ) < 3:
+		print( f"{device_path} Not Mounted Anywhere" )
+	else:
+		print( f"Ubuntu Auto Mounted Drive ... Unmounting {current_mount_point}" )
+		subprocess.getoutput( f"sudo umount {current_mount_point}" )
+
+	subprocess.getoutput( f"sudo mkdir {desired_mount_point}" )
+	print( f"Mounting at {desired_mount_point}" )
+	subprocess.getoutput( f"sudo mount {device_path} {desired_mount_point}" )
+	time.sleep( 3 )
+	return desired_mount_point
 
 if __name__ == '__main__':
 	usb_drive_path = mount_usb_drive( "187A29A07A297B9E" )
