@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 import base64
 from pprint import pprint
@@ -22,8 +23,7 @@ def scan_posix_path( posix_path ):
 	posix_paths = [ x for x in posix_paths if x.suffix in ALLOWED_VIDEO_FILE_EXTENSIONS ]
 	return posix_paths
 
-def find_tv_shows():
-	base_path_string = "/media/morphs/TOSHIBA EXT/MEDIA_MANAGER/TVShows/"
+def find_tv_shows( base_path_string ):
 	tv_shows = scan_posix_path( Path( base_path_string ) )
 	tv_shows_map = {}
 	for index , posix_episode in enumerate( tv_shows ):
@@ -67,6 +67,35 @@ def find_tv_shows():
 			tv_shows_map_organized[ show_name ][ season_index ] = episode_names
 	return tv_shows_map_organized
 
+def mount_usb_drive( uuid ):
+	mount_directory_path = f"/media/{uuid}"
+	current_mount_directory_path = subprocess.getoutput( f"findmnt -S UUID={uuid} -o TARGET | tail -1" )
+	current_mount_directory_path = current_mount_directory_path.strip()
+	if current_mount_directory_path != mount_directory_path:
+		print( current_mount_directory_path )
+		print( "Ubuntu Auto Mounted Drive ... Unmounting {current_mount_directory_path}" )
+		subprocess.getoutput( f"sudo umount {current_mount_directory_path}" )
+		try:
+			# find uuids via sudo /usr/sbin/blkid
+			# findmnt -S UUID="187A29A07A297B9E" | awk '{print $2}'
+			#mount_point = subprocess.getoutput( f"findmnt -rn -S UUID={uuid} -o TARGET" )
+			#print( mount_point )
+			device_path = subprocess.getoutput( "blkid | grep UUID=" )
+			device_path = device_path.split( "\n" )
+			for index , line in enumerate( device_path ):
+				if line.find( uuid ) > -1:
+					device_path = line.split( ":" )[0]
+		except Exception as e:
+			print( e )
+			return False
+		mount_directory_path = f"/media/{uuid}/"
+		subprocess.getoutput( f"sudo mkdir {mount_directory_path}" )
+		print( f"Mounting at {mount_directory_path}" )
+		subprocess.getoutput( f"sudo mount {device_path} {mount_directory_path}" )
+	return mount_directory_path
+
 if __name__ == '__main__':
-	tv_shows = find_tv_shows()
+	usb_drive_path = mount_usb_drive( "187A29A07A297B9E" )
+	print( usb_drive_path )
+	tv_shows = find_tv_shows( f"{usb_drive_path}/MEDIA_MANAGER/TVShows/" )
 	pprint( tv_shows )
