@@ -3,7 +3,7 @@
 GITHUB_USER_NAME="48723247842"
 GITHUB_USER_EMAIL="48723247842@protonmail.com"
 GITHUB_PRIVATE_KEY_PATH="/home/morphs/.ssh/48723247842_github"
-GITHUB_SSH_REPOSITORY_URL="git@github.com:48723247842/USBStorageController.git"
+GITHUB_SSH_REPOSITORY_URL="git@github.com:48723247842/LocalStorageController.git"
 
 function is_int() { return $(test "$@" -eq "$@" > /dev/null 2>&1); }
 ssh-add -D

@@ -85,6 +85,12 @@ class USBStorage:
 	def rebuild_library( self ):
 		print( "Library Invalid" )
 		self.rebuild_tv_shows()
+		# self.rebuild_movies()
+		# self.rebuild_music()
+		# self.rebuild_audio_books()
+		# self.rebuild_odyssey()
+		# self.library_valid = True
+		# self.redis.set( "STATE.USB_STORAGE.LIBRARY.VALID" , True )
 
 	def rebuild_tv_shows( self ):
 		print( "Rebuilding TV Shows" )
@@ -161,3 +167,9 @@ if __name__ == '__main__':
 	usb_storage = USBStorage({
 			"uuid": "187A29A07A297B9E"
 		})
+
+	# So can we fork / spawn whatever the fuck a second script, which then calls back to the c2 server with stuff ?
+	# https://github.com/baudm/mplayer.py/wiki/AsyncPlayer
+
+	# Maybe VLC via Telnet ?
+	# https://github.com/DerMitch/py-vlcclient
