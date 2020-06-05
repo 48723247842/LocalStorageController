@@ -13,11 +13,10 @@ RUN apk add nano
 
 RUN python3 -m pip install redis
 RUN python3 -m pip install sanic
-RUN python3 -m pip install viziocontroller
-RUN python3 -m pip install wakeonlan
+RUN python3 -m pip install vlc-controller
+RUN python3 -m pip install shellescape
 
 COPY python_app /home/python_app
 WORKDIR "/home/python_app"
 
-#ENTRYPOINT [ "/bin/bash" ]
 ENTRYPOINT [ "python3" , "server.py" ]

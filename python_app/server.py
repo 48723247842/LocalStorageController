@@ -7,6 +7,8 @@ from sanic import Sanic
 from sanic.response import json as sanic_json
 from sanic import response
 
+from api import api_blueprint
+from usb.usb_blueprint import usb_blueprint
 from vlc.vlc_blueprint import vlc_blueprint
 
 # https://github.com/huge-success/sanic/tree/master/examples
@@ -24,7 +26,9 @@ def hello( request ):
 def ping( request ):
 	return response.text( "pong\n" )
 
+app.blueprint( api_blueprint )
 app.blueprint( vlc_blueprint )
+app.blueprint( usb_blueprint )
 
 def redis_connect():
 	try:
@@ -54,6 +58,11 @@ def get_config( redis_connection ):
 			except Exception as e:
 				config = {
 					"port": 11301 ,
+					"usb": {
+						"uuid": "187A29A07A297B9E" ,
+						"desired_mount_point": "/media/187A29A07A297B9E" ,
+						"allowed_video_types": [ ".mkv" , "mp4" , "avi" ]
+					} ,
 					"vlc": {
 						"server_ip": "127.0.0.1" ,
 						"port": "4212" ,

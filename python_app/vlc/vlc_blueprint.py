@@ -35,7 +35,7 @@ vlc_blueprint = Blueprint( 'vlc_blueprint' , url_prefix='/vlc' )
 
 @vlc_blueprint.route( '/' )
 def commands_root( request ):
-	return response.text( "you are at the /tv url\n" )
+	return response.text( "you are at the /vlc url\n" )
 
 @vlc_blueprint.route( "/status" , methods=[ "GET" ] )
 def status( request ):
