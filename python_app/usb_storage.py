@@ -6,17 +6,7 @@ import base64
 from pprint import pprint
 import redis
 
-def base64_encode( string ):
-	string_bytes = string.encode( "utf-8" )
-	base64_bytes = base64.b64encode( string_bytes )
-	base64_string = base64_bytes.decode( "utf-8" )
-	return base64_string
-
-def base64_decode( string ):
-	string_bytes = string.encode( "utf-8" )
-	base64_bytes = base64.b64decode( string_bytes )
-	message = base64_bytes.decode( "utf-8" )
-	return message
+import utils
 
 class USBStorage:
 
@@ -94,6 +84,9 @@ class USBStorage:
 
 	def rebuild_tv_shows( self ):
 		print( "Rebuilding TV Shows" )
+		self.redis.delete( "STATE.USB_STORAGE.LIBRARY.TV_SHOWS" )
+		for key in self.redis.scan_iter( "STATE.USB_STORAGE.LIBRARY.TV_SHOWS.*" ):
+			self.redis.delete( key )
 		# Testing Delete All via CLI
 		# redis-cli -n 1 --raw keys "STATE.USB_STORAGE.LIBRARY.*" | xargs redis-cli -n 1 del
 		tv_shows = self.scan_posix_path( self.paths["tv_shows"] )
@@ -118,9 +111,9 @@ class USBStorage:
 				continue
 
 			# Don't Ask
-			show_name_b64 = base64_encode( show_name )
-			season_name_b64 = base64_encode( season_name )
-			episode_name_b64 = base64_encode( episode_name )
+			show_name_b64 = utils.base64_encode( show_name )
+			season_name_b64 = utils.base64_encode( season_name )
+			episode_name_b64 = utils.base64_encode( episode_name )
 			if show_name_b64 not in tv_shows_map:
 				tv_shows_map[ show_name_b64 ] = {}
 			if season_name_b64 not in tv_shows_map[ show_name_b64 ]:
@@ -133,15 +126,15 @@ class USBStorage:
 		# also, why not encode and decode the same thing like 50 times
 		tv_shows_map_organized = {}
 		show_names_b64 = tv_shows_map.keys()
-		show_names = [ base64_decode( x ) for x in show_names_b64 ]
+		show_names = [ utils.base64_decode( x ) for x in show_names_b64 ]
 		show_names.sort()
 		for index , show_name in enumerate( show_names ):
-			season_names_b64 = tv_shows_map[ base64_encode( show_name ) ].keys()
-			tv_shows_map_organized[ show_name ] = [ base64_decode( x ) for x in season_names_b64 ]
+			season_names_b64 = tv_shows_map[ utils.base64_encode( show_name ) ].keys()
+			tv_shows_map_organized[ show_name ] = [ utils.base64_decode( x ) for x in season_names_b64 ]
 			tv_shows_map_organized[ show_name ].sort()
 			for season_index , season in enumerate( tv_shows_map_organized[ show_name ] ):
-				episode_names_b64 = tv_shows_map[ base64_encode( show_name ) ][ base64_encode( season ) ]
-				episode_names = [ base64_decode( x ) for x in episode_names_b64 ]
+				episode_names_b64 = tv_shows_map[ utils.base64_encode( show_name ) ][ utils.base64_encode( season ) ]
+				episode_names = [ utils.base64_decode( x ) for x in episode_names_b64 ]
 				episode_names.sort()
 				tv_shows_map_organized[ show_name ][ season_index ] = episode_names
 
@@ -149,9 +142,10 @@ class USBStorage:
 
 		# 1.) Store All Show Names into Circular List
 		show_keys = tv_shows_map_organized.keys()
-		show_names_b64 = [ base64_encode( x ) for x in show_keys ]
+		show_names_b64 = [ utils.base64_encode( x ) for x in show_keys ]
 		for x in show_names_b64:
 			self.redis.rpush( "STATE.USB_STORAGE.LIBRARY.TV_SHOWS" , x )
+		self.redis.set( "STATE.USB_STORAGE.LIBRARY.TV_SHOWS.INDEX" , 0 )
 
 		# 2.) Store All Episodes into Giant List
 		for show_index , show in enumerate( show_keys ):
@@ -159,8 +153,7 @@ class USBStorage:
 			for season_index , season in enumerate( tv_shows_map_organized[ show ] ):
 				for episode_index , episode in enumerate( tv_shows_map_organized[ show ][ season_index ] ):
 					final_path = str( self.paths["tv_shows"].joinpath( show , str( season_index + 1 ).zfill( 2 ) , episode ) )
-					self.redis.rpush( list_key , base64_encode( final_path ) )
-
+					self.redis.rpush( list_key , utils.base64_encode( final_path ) )
 
 
 if __name__ == '__main__':

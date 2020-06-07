@@ -4,9 +4,17 @@ from sanic import response
 
 import json
 import time
+from datetime import datetime , timedelta
+from pytz import timezone
+eastern_time_zone = timezone( "US/Eastern" )
+# datetime.now( eastern_tz ) - timedelta(minutes=59)
+from pprint import pprint
 import redis
+import redis_circular_list
 
 from vlc_controller import VLCController
+
+import utils
 
 def redis_connect():
 	try:
@@ -30,6 +38,63 @@ def get_vlc_config_from_redis():
 	except Exception as e:
 		print( e )
 		return False
+
+def get_current_episode( file_path_b64=None ):
+	try:
+		redis = redis_connect()
+		if file_path_b64 is None:
+			current_tv_show_name_b64 = redis_circular_list.current( redis , "STATE.USB_STORAGE.LIBRARY.TV_SHOWS" )
+			current_tv_show_name = utils.base64_decode( current_tv_show_name_b64 )
+			file_path_b64 = redis_circular_list.current( redis , f"STATE.USB_STORAGE.LIBRARY.TV_SHOWS.{current_tv_show_name_b64}" )
+
+		file_path = utils.base64_decode( file_path_b64 )
+		meta_data_key = f"STATE.USB_STORAGE.LIBRARY.META_DATA.{file_path_b64}"
+		meta_data = redis.get( meta_data_key )
+		if meta_data is None:
+			meta_data = {
+				"current_time": 0 ,
+				"duration": 0 ,
+				"last_watched_time": 0 ,
+				"last_completed_time": 0 ,
+				"file_path": file_path
+			}
+			redis.set( meta_data_key , json.dumps( meta_data ) )
+		else:
+			meta_data = json.loads( meta_data )
+		return meta_data
+	except Exception as e:
+		print( e )
+		return False
+
+def is_episode_over( episode ):
+	if "duration" not in episode:
+		return False
+	if "current_time" not in episode:
+		return False
+	if episode["current_time"] == 0:
+		return False
+	if episode["duration"] == 0:
+		return False
+	if ( episode["duration"] - episode["current_time"] ) < 3:
+		return True
+	else:
+		return False
+
+def get_next_episode( file_path=None ):
+	redis = redis_connect()
+	if file_path is not None:
+		file_path = utils.base64_encode( file_path )
+
+	episode = get_current_episode( file_path )
+	while is_episode_over( episode ) == True:
+		current_tv_show_name_b64 = redis_circular_list.current( redis , "STATE.USB_STORAGE.LIBRARY.TV_SHOWS" )
+		current_tv_show_name = utils.base64_decode( current_tv_show_name_b64 )
+		file_path_b64 = redis_circular_list.next( redis , f"STATE.USB_STORAGE.LIBRARY.TV_SHOWS.{current_tv_show_name_b64}" )
+		print( file_path_b64 )
+		episode = get_current_episode( file_path_b64 )
+
+	return episode
+
 
 tv_blueprint = Blueprint( 'tv' , url_prefix='/tv' )
 
@@ -74,9 +139,12 @@ def play( request ):
 		vlc_config = get_vlc_config_from_redis()
 		vlc = VLCController( vlc_config )
 		file_path = request.args.get( "file_path" )
-		vlc.add( file_path )
+		next_episode = get_next_episode( file_path )
+		pprint( next_episode )
+		vlc.add( next_episode["file_path"] )
 		time.sleep( 1 )
-		vlc.fullscreen_on()
+		if next_episode["current_time"] > 0:
+			vlc.seek( next_episode["current_time"] )
 		result["status"] = vlc.get_common_info()
 		result["message"] = "success"
 	except Exception as e:
