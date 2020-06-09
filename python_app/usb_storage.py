@@ -18,9 +18,7 @@ class USBStorage:
 			return False
 		if "desired_mount_point" not in self.options:
 			self.options["desired_mount_point"] = f"/media/{self.options['uuid']}"
-		if "allowed_video_types" not in self.options:
-			self.options["allowed_video_types"] = [ ".mkv" , "mp4" , "avi" ]
-
+		#self.options["allowed_video_types"] = [ ".mkv" , "mp4" , "avi" ]
 		self.mount_usb_drive()
 		self.paths = { "usb": Path( self.options["desired_mount_point"] ) }
 		self.paths["media_manager"] = self.paths["usb"].joinpath( "MEDIA_MANAGER" )
@@ -49,7 +47,7 @@ class USBStorage:
 	def scan_posix_path( self , posix_path ):
 		posix_paths = list( posix_path.rglob( '**/*' ) )
 		posix_paths = [ x for x in posix_paths if x.is_file() ]
-		posix_paths = [ x for x in posix_paths if x.suffix in self.options["allowed_video_types"] ]
+		posix_paths = [ x for x in posix_paths if x.suffix == ".mp4" or x.suffix == ".mkv" or x.suffix == ".avi" ]
 		return posix_paths
 
 	def mount_usb_drive( self ):
@@ -89,9 +87,11 @@ class USBStorage:
 			self.redis.delete( key )
 		# Testing Delete All via CLI
 		# redis-cli -n 1 --raw keys "STATE.USB_STORAGE.LIBRARY.*" | xargs redis-cli -n 1 del
+		print( self.paths["tv_shows"] )
 		tv_shows = self.scan_posix_path( self.paths["tv_shows"] )
 		tv_shows_map = {}
 		for index , posix_episode in enumerate( tv_shows ):
+			print( str( posix_episode ) )
 			items = str( posix_episode ).split( str( self.paths["tv_shows"] ) + "/" )[ 1 ].split( "/" )
 			if len( items ) == 3:
 				show_name = items[ 0 ]
@@ -139,6 +139,7 @@ class USBStorage:
 				tv_shows_map_organized[ show_name ][ season_index ] = episode_names
 
 		# Finally Store into Redis
+		#pprint( tv_shows_map_organized )
 
 		# 1.) Store All Show Names into Circular List
 		show_keys = tv_shows_map_organized.keys()
@@ -158,7 +159,7 @@ class USBStorage:
 
 if __name__ == '__main__':
 	usb_storage = USBStorage({
-			"uuid": "187A29A07A297B9E"
+			"uuid": "2864E38A64E358D8"
 		})
 
 	# So can we fork / spawn whatever the fuck a second script, which then calls back to the c2 server with stuff ?

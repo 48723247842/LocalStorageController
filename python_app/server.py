@@ -59,8 +59,14 @@ def get_config( redis_connection ):
 				config = {
 					"port": 11301 ,
 					"usb": {
-						"uuid": "187A29A07A297B9E" ,
-						"desired_mount_point": "/media/187A29A07A297B9E" ,
+						# Toshiba (testing)
+						# "uuid": "187A29A07A297B9E" ,
+						# "desired_mount_point": "/media/187A29A07A297B9E" ,
+						# "allowed_video_types": [ ".mkv" , "mp4" , "avi" ]
+
+						#Seagate (main)
+						"uuid": "2864E38A64E358D8" ,
+						"desired_mount_point": "/media/2864E38A64E358D8" ,
 						"allowed_video_types": [ ".mkv" , "mp4" , "avi" ]
 					} ,
 					"vlc": {

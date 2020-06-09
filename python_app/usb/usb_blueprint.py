@@ -43,7 +43,8 @@ def status( request ):
 	try:
 		usb_config = get_usb_config_from_redis()
 		usb_storage = USBStorage( usb_config )
-		usb_storage.rebuild_library()
+		time.sleep( 3 )
+		#usb_storage.rebuild_library()
 		result["message"] = "success"
 	except Exception as e:
 		print( e )
