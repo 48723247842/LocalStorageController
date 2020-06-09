@@ -167,6 +167,9 @@ def play( request ):
 		time.sleep( 1 )
 		if next_episode["current_time"] > 0:
 			vlc.seek( next_episode["current_time"] )
+		vlc.volume_set( 100 )
+		time.sleep( 3 )
+		vlc.fullscreen_on()
 		result["status"] = vlc.get_common_info()
 		result["message"] = "success"
 	except Exception as e:
