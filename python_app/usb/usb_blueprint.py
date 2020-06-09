@@ -37,6 +37,19 @@ usb_blueprint = Blueprint( 'usb_blueprint' , url_prefix='/usb' )
 def commands_root( request ):
 	return response.text( "you are at the /usb url\n" )
 
+@usb_blueprint.route( "/remount" , methods=[ "GET" ] )
+def status( request ):
+	result = { "message": "failed" }
+	try:
+		usb_config = get_usb_config_from_redis()
+		usb_storage = USBStorage( usb_config )
+		time.sleep( 3 )
+		result["message"] = "success"
+	except Exception as e:
+		print( e )
+		result["error"] = str( e )
+	return json_result( result )
+
 @usb_blueprint.route( "/library/rebuild/all" , methods=[ "GET" ] )
 def status( request ):
 	result = { "message": "failed" }

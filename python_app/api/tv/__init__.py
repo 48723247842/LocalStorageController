@@ -12,6 +12,7 @@ from pprint import pprint
 import redis
 import redis_circular_list
 
+from usb_storage import USBStorage
 from vlc_controller import VLCController
 
 import utils
@@ -26,6 +27,26 @@ def redis_connect():
 			)
 		return redis_connection
 	except Exception as e:
+		return False
+
+def get_usb_config_from_redis():
+	try:
+		redis_connection = redis_connect()
+		config = redis_connection.get( "CONFIG.LOCAL_STORAGE_CONTROLLER_SERVER" )
+		config = json.loads( config )
+		usb_config = config["usb"]
+		return usb_config
+	except Exception as e:
+		print( e )
+		return False
+
+def ensure_usb_drive_is_mounted():
+	try:
+		usb_config = get_usb_config_from_redis()
+		usb_storage = USBStorage( usb_config )
+		return True
+	except Exception as e:
+		print( e )
 		return False
 
 def get_vlc_config_from_redis():
@@ -136,6 +157,7 @@ def resume( request ):
 def play( request ):
 	result = { "message": "failed" }
 	try:
+		ensure_usb_drive_is_mounted()
 		vlc_config = get_vlc_config_from_redis()
 		vlc = VLCController( vlc_config )
 		file_path = request.args.get( "file_path" )

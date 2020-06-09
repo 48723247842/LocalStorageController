@@ -29,7 +29,7 @@ class USBStorage:
 		self.paths["odyssey"] = self.paths["media_manager"].joinpath( "Odyssey" )
 		self.redis = self.redis_connect()
 		self.library_valid = self.redis.get( "STATE.USB_STORAGE.LIBRARY.VALID" )
-		if self.library_valid == False or self.library_valid == None or self.library_valid == "":
+		if self.library_valid == False or self.library_valid == None or self.library_valid == "false" or self.library_valid == "":
 			self.rebuild_library()
 
 	def redis_connect( self ):
@@ -78,7 +78,7 @@ class USBStorage:
 		# self.rebuild_audio_books()
 		# self.rebuild_odyssey()
 		# self.library_valid = True
-		# self.redis.set( "STATE.USB_STORAGE.LIBRARY.VALID" , True )
+		self.redis.set( "STATE.USB_STORAGE.LIBRARY.VALID" , "true" )
 
 	def rebuild_tv_shows( self ):
 		print( "Rebuilding TV Shows" )
