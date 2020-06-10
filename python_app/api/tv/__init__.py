@@ -116,6 +116,22 @@ def get_next_episode( file_path=None ):
 
 	return episode
 
+def update_duration_metadata( duration=None , status_file_path=None ):
+	try:
+		redis = redis_connect()
+		file_path_b64 = base64_encode( status_file_path.split( "file://" )[ 1 ] )
+		metadata_key = f'STATE.USB_STORAGE.LIBRARY.META_DATA.{file_path_b64}'
+		metadata = json.loads( str( redis.get( metadata_key ) , 'utf-8' ) )
+		#pprint( metadata )
+		current_time = int( mode["status"]["status"]["current_time"] )
+		if  current_time > 0:
+			metadata["current_time"] = current_time
+			metadata["duration"] = result["status"]["status"]["duration"]
+			status_message = status_message + f' --> {mode["status"]["status"]["state"]} --> time = {metadata["current_time"]} of {metadata["duration"]}';
+			redis.set( metadata_key , json.dumps( metadata ) )
+	except Exception as e:
+		print( e )
+		return False
 
 tv_blueprint = Blueprint( 'tv' , url_prefix='/tv' )
 
@@ -157,20 +173,31 @@ def resume( request ):
 def play( request ):
 	result = { "message": "failed" }
 	try:
+		# 1.) Get State
 		ensure_usb_drive_is_mounted()
 		vlc_config = get_vlc_config_from_redis()
 		vlc = VLCController( vlc_config )
+
+		# 2.) Calculate Next Episode
 		file_path = request.args.get( "file_path" )
 		next_episode = get_next_episode( file_path )
 		pprint( next_episode )
+
+		# 3.) Play Episode
 		vlc.add( next_episode["file_path"] )
 		time.sleep( 1 )
-		if next_episode["current_time"] > 0:
-			vlc.seek( next_episode["current_time"] )
+		if int( next_episode["current_time"] ) > 5:
+			vlc.seek( int( next_episode["current_time"] ) - 5 )
 		vlc.volume_set( 100 )
 		time.sleep( 3 )
 		vlc.fullscreen_on()
+
+		# 4.) Get Status
 		result["status"] = vlc.get_common_info()
+
+		# 5.) Update Duration Meta Data
+		update_duration_metadata( result["status"]["status"]["duration"] , result["status"]["status"]["file_path"] )
+
 		result["message"] = "success"
 	except Exception as e:
 		print( e )
@@ -211,11 +238,38 @@ def previous( request ):
 def next( request ):
 	result = { "message": "failed" }
 	try:
-		vlc_config = get_vlc_config_from_redis()
+		# 1.) Get State
+		ensure_usb_drive_is_mounted()
+		redis = redis_connect()
+		config = redis.get( "CONFIG.LOCAL_STORAGE_CONTROLLER_SERVER" )
+		config = json.loads( config )
+		vlc_config = config["vlc"]
+
+		# 2.) Advance to Next TV Show in Circular List
+		next_tv_show_name_b64 = redis_circular_list.next( redis , "STATE.USB_STORAGE.LIBRARY.TV_SHOWS" )
+		next_tv_show_name = utils.base64_decode( next_tv_show_name_b64 )
+
+		# 3.) Advance to Next Episode in TV Show even though current one might be un-finished
+		file_path_b64 = redis_circular_list.next( redis , f"STATE.USB_STORAGE.LIBRARY.TV_SHOWS.{next_tv_show_name_b64}" )
+		episode = get_current_episode( file_path_b64 )
+
+		# 4.) Start Episode
 		vlc = VLCController( vlc_config )
-		vlc.next()
+		vlc.add( episode["file_path"] )
 		time.sleep( 1 )
+		if int( episode["current_time"] ) > 5:
+			vlc.seek( int( episode["current_time"] ) - 5 )
+		vlc.volume_set( 100 )
+		time.sleep( 3 )
+		vlc.fullscreen_on()
+
+		# 5.) Get Status
 		result["status"] = vlc.get_common_info()
+		pprint( result["status"] )
+
+		# 6.) Update Duration
+		update_duration_metadata( result["status"]["status"]["duration"] , result["status"]["status"]["file_path"] )
+
 		result["message"] = "success"
 	except Exception as e:
 		print( e )
